@@ -182,7 +182,7 @@ Kiritilgan ma'lumotlar:
     bot.sendMessage(chatId, "Rahmat! Ma'lumotlaringiz yuborildi. Sotuvchi tez orada siz bilan bog'lanadi", {
         reply_markup: {
             inline_keyboard: [
-                [{ text: "Admin bilan bog'lanish", url: `https://t.me/@id${adminChatIds[0]}` }]
+                [{ text: "Admin bilan bog'lanish", url: `https://t.me/@${adminChatIds[0]}` }]
             ]
         }
     });
