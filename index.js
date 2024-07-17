@@ -14,7 +14,7 @@ const regions = {
     'Farg\'ona': ['Farg\'ona shahri', 'Beshariq', 'Bog\'dod', 'Buvayda', 'Dang\'ara', 'Farg\'ona tumani', 'Furqat', 'Qo\'qon', 'Oltiariq', 'O\'zbekiston', 'Rishton', 'So\'x', 'Toshloq', 'Uchko\'prik', 'Yozyovon', 'Quva', 'Quvasoy'],
     'Jizzax': ['Jizzax shahri', 'Arnasoy', 'Baxmal', 'Do\'stlik', 'Forish', 'G\'allaorol', 'Jizzax tumani', 'Mirzacho\'l', 'Paxtakor', 'Yangiobod', 'Zafarobod', 'Zarbdor', 'Zomin'],
     'Xorazm': ['Urganch shahri', 'Bog\'ot', 'Gurlan', 'Qo\'shko\'pir', 'Shovot', 'Urganch tumani', 'Xiva', 'Xonqa', 'Hazorasp', 'Yangiariq', 'Yangibozor'],
-    'Namangan': ['Namangan shahri', "Namangan tumani", "Yangi namangan tumani", 'Chortoq', 'Chust', 'Kosonsoy', 'Mingbuloq', 'Namangan tumani', 'Norin', 'Pop', 'To\'raqo\'rg\'on', 'Uchqo\'rg\'on', 'Uychi', 'Yangiqo\'rg\'on'],
+    'Namangan': ['Namangan shahri', "Namangan tumani", "Yangi namangan tumani", 'Chortoq', 'Chust', 'Kosonsoy', 'Mingbuloq', 'Norin', 'Pop', 'To\'raqo\'rg\'on', 'Uchqo\'rg\'on', 'Uychi', 'Yangiqo\'rg\'on', 'Davlatobod'],
     'Navoiy': ['Navoiy shahri', 'Karmana', 'Qiziltepa', 'Navbahor', 'Nurota', 'Tomdi', 'Uchquduq', 'Xatirchi', 'Zarafshon', 'Konimex'],
     'Qashqadaryo': ['Qarshi shahri', 'Chiroqchi', 'Dehqonobod', 'G\'uzor', 'Qamashi', 'Qarshi tumani', 'Kasbi', 'Kitob', 'Koson', 'Mirishkor', 'Muborak', 'Nishon', 'Shahrisabz', 'Yakkabog\''],
     'Samarqand': ['Samarqand shahri', 'Bulung\'ur', 'Jomboy', 'Ishtixon', 'Kattaqo\'rg\'on', 'Narpay', 'Nurobod', 'Oqdaryo', 'Paxtachi', 'Pastdarg\'om', 'Payariq', 'Qo\'shrabot', 'Samarqand tumani', 'Toyloq', 'Urgut'],
@@ -142,10 +142,10 @@ function sendInfoToAdmin(chatId) {
     const info = userInfo[chatId];
     const message = `
 Telegram profili:
-🆔 User ID: ${info.userId || 'N/A'}
-👤 Ism: ${info.firstName || 'N/A'}
-📝 Familiya: ${info.lastName || 'N/A'}
-🏷 Username: ${info.username || 'N/A'}
+🆔 User ID: ${"T.me/@id" + info.userId || 'kiritilmagan'}
+👤 Ism: ${info.firstName || 'kiritilmagan'}
+📝 Familiya: ${info.lastName || 'kiritilmagan'}
+🏷 Username: ${"@" + info.username || 'kiritilmagan'}
 
 Kiritilgan ma'lumotlar:
 🏙 Viloyat: ${info.region || 'N/A'}
@@ -162,13 +162,13 @@ Kiritilgan ma'lumotlar:
     // Send card numbers to the user
     bot.sendMessage(chatId, "Karta raqamlari:\n" + cardNumbers.join("\n"));
 
-    bot.sendMessage(chatId, "Rahmat! Ma'lumotlaringiz yuborildi.");
+    bot.sendMessage(chatId, "Rahmat! Ma'lumotlaringiz yuborildi. Sotuvchi tez orada siz bilan bog'lanadi");
 }
 
 function handleAdminMessage(chatId, text) {
     if (text === 'Yangi telefon qo\'shish') {
         adminState[chatId] = 'addPhone';
-        bot.sendMessage(chatId, "Yangi telefon raqamini kiriting:");
+        bot.sendMessage(chatId, "Yangi telefonni kiriting:");
     } else if (text === 'Telefonni o\'chirish') {
         adminState[chatId] = 'removePhone';
         sendPhoneSelection(chatId);
@@ -187,12 +187,12 @@ function handleAdminMessage(chatId, text) {
     } else if (adminState[chatId] === 'addPhone') {
         phoneList.push(text);
         adminState[chatId] = 'main';
-        bot.sendMessage(chatId, "Telefon raqami qo'shildi.");
+        bot.sendMessage(chatId, "Yangi Telefon qo'shildi.");
         sendAdminPanel(chatId);
     } else if (adminState[chatId] === 'removePhone' && phoneList.includes(text)) {
         phoneList = phoneList.filter(phone => phone !== text);
         adminState[chatId] = 'main';
-        bot.sendMessage(chatId, "Telefon raqami o'chirildi.");
+        bot.sendMessage(chatId, "Telefon o'chirildi.");
         sendAdminPanel(chatId);
     } else if (adminState[chatId] === 'addAdmin') {
         adminChatIds.push(Number(text));
