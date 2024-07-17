@@ -4,7 +4,7 @@ const token = process.env.token;
 const bot = new TelegramBot(token, { polling: true });
 
 // Admin chat IDs
-let adminChatIds = [1015112180, 5889469844]; // Replace with actual admin chat IDs
+let adminChatIds = [7009544291, 5889469844]; // Replace with actual admin chat IDs
 
 // Regions and districts data
 const regions = {
