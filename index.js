@@ -1,10 +1,10 @@
 const TelegramBot = require('node-telegram-bot-api');
-require("dotenv").config()
-const token=process.env.token
+require("dotenv").config();
+const token = process.env.token;
 const bot = new TelegramBot(token, { polling: true });
 
 // Admin chat IDs
-const adminChatIds = [648424505, 1015112180]; // Replace with actual admin chat IDs
+let adminChatIds = [5889469844]; // Replace with actual admin chat IDs
 
 // Regions and districts data
 const regions = {
@@ -26,33 +26,12 @@ const regions = {
 let userInfo = {};
 let phoneList = ['Telefon 1', 'Telefon 2', 'Telefon 3'];
 let adminState = {};
+let cardNumbers = ['1111222233334444']; // Initialize with the given card number
 
 // Start command
 bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
-    userInfo[chatId] = {};
-    bot.sendMessage(chatId, "Telefon raqamingizni kiriting.", {
-        reply_markup: {
-            keyboard: [[{
-                text: "Telefon raqamini yuborish",
-                request_contact: true
-            }]],
-            resize_keyboard: true,
-            one_time_keyboard: true
-        }
-    });
-});
-
-// Handling contact
-bot.on('contact', (msg) => {
-    const chatId = msg.chat.id;
-    userInfo[chatId] = {
-        phoneNumber: msg.contact.phone_number,
-        userId: msg.from.id,
-        firstName: msg.from.first_name,
-        lastName: msg.from.last_name,
-        username: msg.from.username
-    };
+    userInfo[chatId] = { userId: chatId, firstName: msg.from.first_name, lastName: msg.from.last_name, username: msg.from.username };
     sendRegionSelection(chatId);
 });
 
@@ -107,29 +86,31 @@ bot.onText(/\/admin/, (msg) => {
     const chatId = msg.chat.id;
     if (adminChatIds.includes(chatId)) {
         adminState[chatId] = 'main';
-        bot.sendMessage(chatId, "Admin paneli:", {
-            reply_markup: {
-                keyboard: [
-                    ["Yangi telefon qo'shish", "Telefonni o'chirish"],
-                    ["Telefonlar ro'yxati"]
-                ],
-                resize_keyboard: true,
-                one_time_keyboard: false
-            }
-        });
+        sendAdminPanel(chatId);
     } else {
         bot.sendMessage(chatId, "Sizda bu buyruqni bajarish uchun ruxsat yo'q.");
     }
 });
 
+function sendAdminPanel(chatId) {
+    bot.sendMessage(chatId, "Admin paneli:", {
+        reply_markup: {
+            keyboard: [
+                ["Yangi telefon qo'shish", "Telefonni o'chirish"],
+                ["Admin qo'shish", "Adminni o'chirish"],
+                ["Karta raqam qo'shish", "Karta raqamni o'chirish"],
+                ["Telefonlar ro'yxati", "Adminlar ro'yxati", "Karta raqamlar ro'yxati"]
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: false
+        }
+    });
+}
+
 // Handling messages
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
-
-    if (msg.contact) {
-        return;
-    }
 
     if (adminChatIds.includes(chatId) && adminState[chatId]) {
         handleAdminMessage(chatId, text);
@@ -142,105 +123,132 @@ function handleUserMessage(chatId, text) {
     if (!userInfo[chatId].region && regions[text]) {
         userInfo[chatId].region = text;
         sendDistrictSelection(chatId, text);
-    } else if (!userInfo[chatId].district && userInfo[chatId].region && regions[userInfo[chatId].region].includes(text)) {
+    } else if (userInfo[chatId].region && text === 'Orqaga') {
+        delete userInfo[chatId].region;
+        sendRegionSelection(chatId);
+    } else if (userInfo[chatId].region && !userInfo[chatId].district && regions[userInfo[chatId].region].includes(text)) {
         userInfo[chatId].district = text;
         sendPhoneSelection(chatId);
-    } else if (!userInfo[chatId].selectedPhone && phoneList.includes(text)) {
+    } else if (userInfo[chatId].district && text === 'Orqaga') {
+        delete userInfo[chatId].district;
+        sendDistrictSelection(chatId, userInfo[chatId].region);
+    } else if (userInfo[chatId].district && phoneList.includes(text)) {
         userInfo[chatId].selectedPhone = text;
-        const user = userInfo[chatId];
-        const message = `
-Yangi foydalanuvchi ma'lumotlari:
+        sendInfoToAdmin(chatId);
+    }
+}
 
+function sendInfoToAdmin(chatId) {
+    const info = userInfo[chatId];
+    const message = `
 Telegram profili:
-🆔 User ID: ${"T.me/@id" + user.userId}
-👤 Ism: ${user.firstName}
-📝 Familiya: ${user.lastName || 'Kiritilmagan'}
-🏷 Username: @${user.username || 'Kiritilmagan'}
+🆔 User ID: ${info.userId || 'N/A'}
+👤 Ism: ${info.firstName || 'N/A'}
+📝 Familiya: ${info.lastName || 'N/A'}
+🏷 Username: ${info.username || 'N/A'}
 
 Kiritilgan ma'lumotlar:
-📞 Telefon raqami: ${user.phoneNumber}
-🏙 Viloyat: ${user.region}
-🏘 Tuman: ${user.district}
-📱 Tanlangan telefon: ${user.selectedPhone}
+🏙 Viloyat: ${info.region || 'N/A'}
+🏘 Tuman: ${info.district || 'N/A'}
+📱 Tanlangan telefon: ${info.selectedPhone || 'N/A'}
 `;
-        adminChatIds.forEach(adminId => {
-            bot.sendMessage(adminId, message);
-        });
-        bot.sendMessage(chatId, "Ma'lumotlaringiz qabul qilindi. Rahmat! Tez orada sotuvchi aloqaga chiqadi");
-    } else if (text === 'Orqaga') {
-        if (userInfo[chatId].district) {
-            userInfo[chatId].district = null;
-            sendRegionSelection(chatId);
-        } else if (userInfo[chatId].region) {
-            userInfo[chatId].region = null;
-            sendRegionSelection(chatId);
-        } else if (userInfo[chatId].selectedPhone) {
-            userInfo[chatId].selectedPhone = null;
-            sendDistrictSelection(chatId, userInfo[chatId].region);
-        }
-    }
+
+    adminChatIds.forEach(adminChatId => {
+        bot.sendMessage(adminChatId, message);
+    });
+
+    delete userInfo[chatId];
+
+    // Send card numbers to the user
+    bot.sendMessage(chatId, "Karta raqamlari:\n" + cardNumbers.join("\n"));
+
+    bot.sendMessage(chatId, "Rahmat! Ma'lumotlaringiz yuborildi.");
 }
 
 function handleAdminMessage(chatId, text) {
-    switch (adminState[chatId]) {
-        case 'main':
-            if (text === "Yangi telefon qo'shish") {
-                adminState[chatId] = 'adding_phone';
-                bot.sendMessage(chatId, "Yangi telefon nomini kiriting:");
-            } else if (text === "Telefonni o'chirish") {
-                adminState[chatId] = 'deleting_phone';
-                sendPhoneListForDeletion(chatId);
-            } else if (text === "Telefonlar ro'yxati") {
-                const phoneListMessage = phoneList.join('\n');
-                bot.sendMessage(chatId, `Telefonlar ro'yxati:\n${phoneListMessage}`);
-            }
-            break;
-        case 'adding_phone':
-            if (text === 'Orqaga') {
-                returnToAdminPanel(chatId);
-            } else {
-                phoneList.push(text);
-                bot.sendMessage(chatId, `Yangi telefon qo'shildi: ${text}`);
-                returnToAdminPanel(chatId);
-            }
-            break;
-        case 'deleting_phone':
-            if (text === 'Orqaga') {
-                returnToAdminPanel(chatId);
-            } else if (phoneList.includes(text)) {
-                phoneList = phoneList.filter(phone => phone !== text);
-                bot.sendMessage(chatId, `Telefon o'chirildi: ${text}`);
-                returnToAdminPanel(chatId);
-            } else {
-                bot.sendMessage(chatId, "Noto'g'ri tanlov, qayta urinib ko'ring.");
-                sendPhoneListForDeletion(chatId);
-            }
-            break;
+    if (text === 'Yangi telefon qo\'shish') {
+        adminState[chatId] = 'addPhone';
+        bot.sendMessage(chatId, "Yangi telefon raqamini kiriting:");
+    } else if (text === 'Telefonni o\'chirish') {
+        adminState[chatId] = 'removePhone';
+        sendPhoneSelection(chatId);
+    } else if (text === 'Admin qo\'shish') {
+        adminState[chatId] = 'addAdmin';
+        bot.sendMessage(chatId, "Yangi adminning chat ID sini kiriting:");
+    } else if (text === 'Adminni o\'chirish') {
+        adminState[chatId] = 'removeAdmin';
+        sendAdminSelection(chatId);
+    } else if (text === 'Karta raqam qo\'shish') {
+        adminState[chatId] = 'addCard';
+        bot.sendMessage(chatId, "Yangi karta raqamini kiriting:");
+    } else if (text === 'Karta raqamni o\'chirish') {
+        adminState[chatId] = 'removeCard';
+        sendCardSelection(chatId);
+    } else if (adminState[chatId] === 'addPhone') {
+        phoneList.push(text);
+        adminState[chatId] = 'main';
+        bot.sendMessage(chatId, "Telefon raqami qo'shildi.");
+        sendAdminPanel(chatId);
+    } else if (adminState[chatId] === 'removePhone' && phoneList.includes(text)) {
+        phoneList = phoneList.filter(phone => phone !== text);
+        adminState[chatId] = 'main';
+        bot.sendMessage(chatId, "Telefon raqami o'chirildi.");
+        sendAdminPanel(chatId);
+    } else if (adminState[chatId] === 'addAdmin') {
+        adminChatIds.push(Number(text));
+        adminState[chatId] = 'main';
+        bot.sendMessage(chatId, "Admin qo'shildi.");
+        sendAdminPanel(chatId);
+    } else if (adminState[chatId] === 'removeAdmin' && adminChatIds.includes(Number(text))) {
+        adminChatIds = adminChatIds.filter(id => id !== Number(text));
+        adminState[chatId] = 'main';
+        bot.sendMessage(chatId, "Admin o'chirildi.");
+        sendAdminPanel(chatId);
+    } else if (adminState[chatId] === 'addCard') {
+        cardNumbers.push(text);
+        adminState[chatId] = 'main';
+        bot.sendMessage(chatId, "Karta raqami qo'shildi.");
+        sendAdminPanel(chatId);
+    } else if (adminState[chatId] === 'removeCard' && cardNumbers.includes(text)) {
+        cardNumbers = cardNumbers.filter(card => card !== text);
+        adminState[chatId] = 'main';
+        bot.sendMessage(chatId, "Karta raqami o'chirildi.");
+        sendAdminPanel(chatId);
+    } else if (text === 'Telefonlar ro\'yxati') {
+        bot.sendMessage(chatId, "Telefonlar ro'yxati:\n" + phoneList.join("\n"));
+    } else if (text === 'Adminlar ro\'yxati') {
+        bot.sendMessage(chatId, "Adminlar ro'yxati:\n" + adminChatIds.join("\n"));
+    } else if (text === 'Karta raqamlar ro\'yxati') {
+        bot.sendMessage(chatId, "Karta raqamlar ro'yxati:\n" + cardNumbers.join("\n"));
     }
 }
 
-function sendPhoneListForDeletion(chatId) {
-    const phoneKeyboard = phoneList.map(phone => [phone]);
-    phoneKeyboard.push(['Orqaga']);
-    bot.sendMessage(chatId, "O'chiriladigan telefonni tanlang:", {
+function sendAdminSelection(chatId) {
+    const adminKeyboard = [];
+    for (let i = 0; i < adminChatIds.length; i += 2) {
+        adminKeyboard.push(adminChatIds.slice(i, i + 2).map(String));
+    }
+    adminKeyboard.push(['Orqaga']);
+    bot.sendMessage(chatId, "Adminni tanlang.", {
         reply_markup: {
-            keyboard: phoneKeyboard,
+            keyboard: adminKeyboard,
             resize_keyboard: true,
             one_time_keyboard: true
         }
     });
 }
 
-function returnToAdminPanel(chatId) {
-    adminState[chatId] = 'main';
-    bot.sendMessage(chatId, "Admin paneli:", {
+function sendCardSelection(chatId) {
+    const cardKeyboard = [];
+    for (let i = 0; i < cardNumbers.length; i += 2) {
+        cardKeyboard.push(cardNumbers.slice(i, i + 2));
+    }
+    cardKeyboard.push(['Orqaga']);
+    bot.sendMessage(chatId, "Karta raqamini tanlang.", {
         reply_markup: {
-            keyboard: [
-                ["Yangi telefon qo'shish", "Telefonni o'chirish"],
-                ["Telefonlar ro'yxati"]
-            ],
+            keyboard: cardKeyboard,
             resize_keyboard: true,
-            one_time_keyboard: false
+            one_time_keyboard: true
         }
     });
 }
